@@ -427,11 +427,25 @@ fun TransactionRow(
 
 @Composable
 fun ExitView(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Text("Exit Screen")
+        Button(
+            onClick = {
+                LogDropLogger.logInfo("ExitView", "Exit button tapped → navigating to LoginActivity")
+
+                val intent = Intent(context, LoginActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                context.startActivity(intent)
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = LogDropBlue),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Text("Exit", color = White)
+        }
     }
 }
 
