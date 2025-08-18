@@ -1,5 +1,6 @@
 package io.initialcode.logdropandroiddemoapp.ui
 
+import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -20,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -40,7 +42,10 @@ import kotlinx.coroutines.delay
 //  @author Initial Code Software Solutions
 //
 
+private val TAG = "HomeActivity"
+
 class HomeActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -59,6 +64,7 @@ class HomeActivity : ComponentActivity() {
 @Composable
 fun HomeView() {
     var selectedTab by remember { mutableIntStateOf(0) }
+    val context = LocalContext.current
 
     val navItemColors = NavigationBarItemDefaults.colors(
         selectedIconColor = LogDropBlue,
@@ -76,7 +82,7 @@ fun HomeView() {
                     selected = selectedTab == 0,
                     onClick = {
                         selectedTab = 0
-                        LogDropLogger.logInfo("HomeActivity", "Home screen opened")
+                        LogDropLogger.logInfo(TAG, "Home screen opened")
                     },
                     icon = {
                         Image(
@@ -93,7 +99,7 @@ fun HomeView() {
                     selected = selectedTab == 1,
                     onClick = {
                         selectedTab = 1
-                        LogDropLogger.logDebug("HomeActivity", "Payments screen opened")
+                        LogDropLogger.logDebug(TAG, "Payments screen opened")
                     },
                     icon = {
                         Image(
@@ -110,7 +116,7 @@ fun HomeView() {
                     selected = selectedTab == 2,
                     onClick = {
                         selectedTab = 2
-                        LogDropLogger.logWarning("HomeActivity", "Exit tapped, logging out")
+                        LogDropLogger.logWarning(TAG, "Exit tapped, logging out")
                     },
                     icon = {
                         Image(
@@ -137,7 +143,7 @@ fun HomeView() {
 @Composable
 fun HomeTab(modifier: Modifier = Modifier) {
     LaunchedEffect(Unit) {
-        LogDropLogger.logInfo("HomeActivity", "Home screen opened")
+        LogDropLogger.logInfo(TAG, "Home screen opened")
     }
 
     Column(
@@ -160,7 +166,7 @@ fun HomeTab(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .size(28.dp)
                     .clickable {
-                        LogDropLogger.logInfo("HomeActivity", "User tapped on profile icon")
+                        LogDropLogger.logInfo(TAG, "User tapped on profile icon")
                         throw RuntimeException("unexpected nil value while loading profile") // CRASH
                     }
             )
@@ -172,7 +178,7 @@ fun HomeTab(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .size(24.dp)
                     .clickable {
-                        LogDropLogger.logDebug("HomeActivity", "Settings button tapped")
+                        LogDropLogger.logDebug(TAG, "Settings button tapped")
                     }
             )
         }
@@ -202,7 +208,7 @@ fun HomeTab(modifier: Modifier = Modifier) {
                 )
 
                 LaunchedEffect(Unit) {
-                    LogDropLogger.logInfo("HomeActivity", "Balance displayed: $2,985.43")
+                    LogDropLogger.logInfo(TAG, "Balance displayed: $2,985.43")
                 }
 
                 Box(
@@ -292,7 +298,7 @@ fun HomeTab(modifier: Modifier = Modifier) {
 
                     Button(
                         onClick = {
-                            LogDropLogger.logInfo("HomeActivity", "Manage button tapped")
+                            LogDropLogger.logInfo(TAG, "Manage button tapped")
                             simulateApiCall()
                         },
                         colors = ButtonDefaults.buttonColors(
@@ -325,12 +331,12 @@ fun HomeTab(modifier: Modifier = Modifier) {
                 )
 
                 LaunchedEffect(Unit) {
-                    LogDropLogger.logDebug("HomeActivity", "Transactions list appeared")
+                    LogDropLogger.logDebug(TAG, "Transactions list appeared")
                 }
 
                 TextButton(
                     onClick = {
-                        LogDropLogger.logInfo("HomeActivity", "See All transactions tapped")
+                        LogDropLogger.logInfo(TAG, "See All transactions tapped")
                     }
                 ) {
                     Text(
@@ -420,16 +426,6 @@ fun TransactionRow(
 }
 
 @Composable
-fun PaymentsView(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text("Payments Screen")
-    }
-}
-
-@Composable
 fun ExitView(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier.fillMaxSize(),
@@ -440,8 +436,8 @@ fun ExitView(modifier: Modifier = Modifier) {
 }
 
 private fun simulateApiCall() {
-    LogDropLogger.logDebug("HomeActivity", "API request started: POST /v1/account/manage")
+    LogDropLogger.logDebug(TAG, "API request started: POST /v1/account/manage")
     Handler(Looper.getMainLooper()).postDelayed({
-        LogDropLogger.logError("HomeActivity", "API request failed: ${DummyData.failedApiResponse}")
+        LogDropLogger.logError(TAG, "API request failed: ${DummyData.failedApiResponse}")
     }, 1500)
 }

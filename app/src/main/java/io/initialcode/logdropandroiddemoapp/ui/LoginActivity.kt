@@ -34,6 +34,8 @@ import java.util.*
 //  Copyright (c) 2025 LogDrop.
 //  @author Initial Code
 //
+private val TAG = "LoginActivity"
+
 class LoginActivity : ComponentActivity() {
 
     private lateinit var cacheManager: CacheManager
@@ -77,10 +79,10 @@ fun LoginScreen(
     var showError by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        LogDropLogger.logInfo("LoginActivity", "Login screen opened")
+        LogDropLogger.logInfo(TAG, "Login screen opened")
         cacheManager.getString("cachedUsername")?.let {
             userName = it
-            LogDropLogger.logInfo("LoginActivity", "Loaded saved username: $it", loginFlow)
+            LogDropLogger.logInfo(TAG, "Loaded saved username: $it", loginFlow)
         }
     }
 
@@ -110,7 +112,7 @@ fun LoginScreen(
             value = userName,
             onValueChange = {
                 userName = it
-                LogDropLogger.logInfo("LoginActivity", "Username updated: $it", loginFlow)
+                LogDropLogger.logInfo(TAG, "Username updated: $it", loginFlow)
             },
             label = { Text("User Name") },
             singleLine = true,
@@ -123,7 +125,7 @@ fun LoginScreen(
                 pinCode = it
                 // The "password" value here will be masked in logs
                 // because of the SensitiveInfoFilter added in LogDropConfig
-                LogDropLogger.logInfo("LoginActivity", "PIN code updated: password=$it", loginFlow)
+                LogDropLogger.logInfo(TAG, "PIN code updated: password=$it", loginFlow)
             },
             label = { Text("PIN Code (1234)") },
             singleLine = true,
@@ -144,7 +146,7 @@ fun LoginScreen(
 
         Button(
             onClick = {
-                LogDropLogger.logInfo("LoginActivity", "Sign in attempt for username: $userName", loginFlow)
+                LogDropLogger.logInfo(TAG, "Sign in attempt for username: $userName", loginFlow)
                 if (pinCode == DummyData.pinCode) {
                     showError = false
                     val cachedUser = cacheManager.getString("cachedUsername")
@@ -152,15 +154,15 @@ fun LoginScreen(
                     if (cachedUser != userName) {
                         cacheManager.setString("cachedUsername", userName)
                         LogDrop.userUpdate(userId = userName)
-                        LogDropLogger.logInfo("LoginActivity", "Sign in successful for username: $userName", loginFlow)
+                        LogDropLogger.logInfo(TAG, "Sign in successful for username: $userName", loginFlow)
                     } else {
-                        LogDropLogger.logInfo("LoginActivity", "Sign in successful (cached user reused): $userName", loginFlow)
+                        LogDropLogger.logInfo(TAG, "Sign in successful (cached user reused): $userName", loginFlow)
                     }
 
                     onLoginSuccess()
                 } else {
                     showError = true
-                    LogDropLogger.logWarning("LoginActivity", "Sign in failed for username: $userName", loginFlow)
+                    LogDropLogger.logWarning(TAG, "Sign in failed for username: $userName", loginFlow)
                 }
             },
             modifier = Modifier.fillMaxWidth()
