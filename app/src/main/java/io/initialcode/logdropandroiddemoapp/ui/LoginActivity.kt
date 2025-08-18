@@ -1,19 +1,24 @@
-package io.initialcode.logdropandroiddemoapp
+package io.initialcode.logdropandroiddemoapp.ui
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import io.initialcode.logdropandroiddemoapp.R
+import io.initialcode.logdropandroiddemoapp.ui.HomeActivity
 import io.initialcode.logdropandroiddemoapp.ui.theme.LogDropAndroidDemoAppTheme
 import io.initialcode.logdropandroiddemoapp.utils.CacheManager
 import io.initialcode.logdropandroiddemoapp.utils.DummyData
@@ -51,7 +56,9 @@ class LoginActivity : ComponentActivity() {
                     cacheManager = cacheManager,
                     loginFlow = loginFlow,
                     onLoginSuccess = {
-                        // TODO: navigate to next screen
+                        val intent = Intent(this, HomeActivity::class.java)
+                        startActivity(intent)
+                        finish()
                     }
                 )
             }
@@ -84,7 +91,16 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+
         Spacer(modifier = Modifier.weight(1f))
+
+        Image(
+            painter = painterResource(id = R.drawable.app_logo),
+            contentDescription = "App Logo",
+            modifier = Modifier
+                .width(300.dp)
+                .height(100.dp)
+        )
 
         Text("Fast and Secure Payments", style = MaterialTheme.typography.titleMedium)
 
