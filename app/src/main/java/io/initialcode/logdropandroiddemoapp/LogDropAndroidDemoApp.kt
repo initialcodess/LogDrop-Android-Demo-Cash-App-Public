@@ -10,17 +10,7 @@ class LogDropAndroidDemoApp : Application() {
         super.onCreate()
 
         val config = LogDropConfig.Builder()
-            .apiKey(BuildConfig.LOGDROP_API_KEY)
-            .baseUrl(BuildConfig.LOGDROP_BASE_URL)
             .logcatEnabled(true)
-            .crashTrackingEnabled(true)
-            .sensitiveInfoFilter(
-                listOf(
-                    Regex("^cardNo:\\s(?:\\d{4}[-\\s]?){3}\\d{4}$"),
-                    Regex("password=[^&\\s]+")
-                )
-            )
-            .crashTrackingEnabled(true)
             .build()
 
         LogDrop.init(this, config)

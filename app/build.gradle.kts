@@ -18,8 +18,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "LOGDROP_API_KEY", "\"YOUR_API_KEY\"")
-        buildConfigField("String", "LOGDROP_BASE_URL", "\"YOUR_BASE_URL\"")
     }
 
     buildTypes {

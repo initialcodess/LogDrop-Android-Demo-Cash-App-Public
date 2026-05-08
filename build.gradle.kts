@@ -11,6 +11,6 @@ buildscript {
         maven { url = uri("https://artifactory.logdrop.io/repository/logdrop-gradle-plugin/") }
     }
     dependencies {
-        classpath("io.logdrop.gradle:plugin:1.0.0")
+        classpath("io.logdrop.gradle:plugin:1.0.8-alpha1")
     }
 }

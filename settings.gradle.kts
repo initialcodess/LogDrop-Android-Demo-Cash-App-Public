@@ -17,6 +17,7 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url = uri("https://artifactory.logdrop.io/repository/android-logdrop-sdk/") }
+        maven { url = uri("https://dev-nexus.logdrop.io/repository/dev-logdrop-sdk/") }
     }
 }
 
