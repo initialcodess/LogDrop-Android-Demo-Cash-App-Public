@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services)
 
     id("io.logdrop.gradle.plugin")
 }
@@ -18,8 +19,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "LOGDROP_API_KEY", "\"YOUR_API_KEY\"")
-        buildConfigField("String", "LOGDROP_BASE_URL", "\"YOUR_BASE_URL\"")
     }
 
     buildTypes {
@@ -47,6 +46,9 @@ android {
 dependencies {
 
     implementation (libs.logdropsdk)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

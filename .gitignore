@@ -13,3 +13,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+logdrop-services.json
+app/google-services.json
