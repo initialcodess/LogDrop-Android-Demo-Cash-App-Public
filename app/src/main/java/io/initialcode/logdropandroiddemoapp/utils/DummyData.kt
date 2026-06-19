@@ -12,7 +12,7 @@ object DummyData {
 
     const val failedApiResponse = """
     --- REQUEST ---------------------------------
-    POST https://api.logdrop.dev/v1/account/manage
+    POST https://cashapp-demo.logdrop.io/v1/account/manage
     Headers:
         Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         Content-Type: application/json
