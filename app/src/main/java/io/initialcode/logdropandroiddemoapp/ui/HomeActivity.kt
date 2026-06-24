@@ -1,5 +1,6 @@
 package io.initialcode.logdropandroiddemoapp.ui
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -30,9 +31,11 @@ import io.initialcode.logdropandroiddemoapp.R
 import io.initialcode.logdropandroiddemoapp.ui.theme.LogDropAndroidDemoAppTheme
 import io.initialcode.logdropandroiddemoapp.ui.theme.LogDropBlue
 import io.initialcode.logdropandroiddemoapp.ui.theme.White
+import io.initialcode.logdropandroiddemoapp.utils.APIClient
 import io.initialcode.logdropandroiddemoapp.utils.DummyData
 import io.initialcode.logdropandroiddemoapp.utils.LogDropLogger
-import kotlinx.coroutines.delay
+import org.json.JSONObject
+import java.lang.Exception
 
 //
 //  HomeActivity.kt
@@ -142,241 +145,283 @@ fun HomeView() {
 
 @Composable
 fun HomeTab(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val apiClient = remember { APIClient.getInstance(context) }
+
+    var balance by remember { mutableStateOf("$0.00") }
+    var cardNumber by remember { mutableStateOf("**** **** **** ****") }
+    var cardHolder by remember { mutableStateOf("-") }
+    var expiryDate by remember { mutableStateOf("--/--") }
+    var accountNumber by remember { mutableStateOf("•••• ••••") }
+    var transactions by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+
     LaunchedEffect(Unit) {
         LogDropLogger.logInfo(TAG, "Home screen opened")
-    }
+        try {
+            val response = apiClient.request("/dashboard", "GET")
+            val account = response.getJSONObject("account")
+            balance = "$" + account.getString("balance")
+            accountNumber = "•••• " + account.getString("accountNumber").takeLast(4)
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(White)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(top = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_profile),
-                contentDescription = "Profile",
-                tint = Color.Gray,
-                modifier = Modifier
-                    .size(28.dp)
-                    .clickable {
-                        LogDropLogger.logInfo(TAG, "User tapped on profile icon")
-                        throw RuntimeException("unexpected nil value while loading profile") // CRASH
-                    }
-            )
-
-            Icon(
-                painter = painterResource(id = R.drawable.ic_settings),
-                contentDescription = "Settings",
-                tint = LogDropBlue,
-                modifier = Modifier
-                    .size(24.dp)
-                    .clickable {
-                        LogDropLogger.logDebug(TAG, "Settings button tapped")
-                    }
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(top = 16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "CURRENT ACCOUNT",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray
-                )
-
-                Text(
-                    text = "$2,985.43",
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                    color = Color.Black
-                )
-
-                LaunchedEffect(Unit) {
-                    LogDropLogger.logInfo(TAG, "Balance displayed: $2,985.43")
-                }
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(Color.Black, LogDropBlue)
-                            )
-                        )
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = "**** **** **** 2025",
-                            color = White
-                        )
-                        Text(
-                            text = "Kvothe Rofthuss",
-                            color = White.copy(alpha = 0.8f),
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                        Text(
-                            text = "02/28",
-                            color = White.copy(alpha = 0.8f),
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_vector_logo),
-                        contentDescription = "App Logo",
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .size(width = 50.dp, height = 50.dp)
-                            .padding(8.dp)
-                    )
-                }
+            val cards = response.optJSONArray("cards")
+            if (cards != null && cards.length() > 0) {
+                val card = cards.getJSONObject(0)
+                cardNumber = card.getString("cardNumber")
+                cardHolder = card.getString("cardHolder")
+                expiryDate = card.getString("expiryDate")
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            val txArray = response.optJSONArray("transactions")
+            if (txArray != null) {
+                val list = mutableListOf<JSONObject>()
+                for (i in 0 until txArray.length()) {
+                    list.add(txArray.getJSONObject(i))
+                }
+                transactions = list
+            }
+            isLoading = false
+            LogDropLogger.logInfo(TAG, "Dashboard data loaded successfully")
+        } catch (e: Exception) {
+            isLoading = false
+            LogDropLogger.logError(TAG, "Dashboard request failed: ${e.message}")
+        }
+    }
 
-            Card(
+    if (isLoading) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(White),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = LogDropBlue)
+        }
+    } else {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .background(White)
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                colors = CardDefaults.cardColors(containerColor = White)
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_profile),
+                    contentDescription = "Profile",
+                    tint = Color.Gray,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clickable {
+                            LogDropLogger.logInfo(TAG, "User tapped on profile icon")
+                            throw RuntimeException("unexpected nil value while loading profile") // CRASH
+                        }
+                )
+
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_settings),
+                    contentDescription = "Settings",
+                    tint = LogDropBlue,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clickable {
+                            LogDropLogger.logDebug(TAG, "Settings button tapped")
+                        }
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(top = 16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "CURRENT ACCOUNT",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
+
+                    Text(
+                        text = balance,
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                        color = Color.Black
+                    )
+
+                    LaunchedEffect(balance) {
+                        LogDropLogger.logInfo(TAG, "Balance displayed: $balance")
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(Color.Black, LogDropBlue)
+                                )
+                            )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = cardNumber,
+                                color = White
+                            )
+                            Text(
+                                text = cardHolder,
+                                color = White.copy(alpha = 0.8f),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                            Text(
+                                text = expiryDate,
+                                color = White.copy(alpha = 0.8f),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_vector_logo),
+                            contentDescription = "App Logo",
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(width = 50.dp, height = 50.dp)
+                                .padding(8.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    colors = CardDefaults.cardColors(containerColor = White)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_creditcard),
+                            contentDescription = "Credit Card",
+                            modifier = Modifier.size(24.dp),
+                            tint = LogDropBlue
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Column {
+                            Text(
+                                text = "Current Account",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+                            Text(
+                                text = accountNumber,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.Gray
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        Button(
+                            onClick = {
+                                LogDropLogger.logInfo(TAG, "Manage button tapped")
+                                simulateApiCall()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = LogDropBlue.copy(alpha = 0.1f)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = "Manage",
+                                color = LogDropBlue
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_creditcard),
-                        contentDescription = "Credit Card",
-                        modifier = Modifier.size(24.dp),
-                        tint = LogDropBlue
+                    Text(
+                        text = "Transactions",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.Black
                     )
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Column {
-                        Text(
-                            text = "Current Account",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-                        Text(
-                            text = "•••• 2025",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.Gray
-                        )
+                    LaunchedEffect(Unit) {
+                        LogDropLogger.logDebug(TAG, "Transactions list appeared")
                     }
 
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    Button(
+                    TextButton(
                         onClick = {
-                            LogDropLogger.logInfo(TAG, "Manage button tapped")
-                            simulateApiCall()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = LogDropBlue.copy(alpha = 0.1f)
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            LogDropLogger.logInfo(TAG, "See All transactions tapped")
+                        }
                     ) {
                         Text(
-                            text = "Manage",
+                            text = "See All",
+                            style = MaterialTheme.typography.labelSmall,
                             color = LogDropBlue
                         )
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Transactions",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.Black
-                )
-
-                LaunchedEffect(Unit) {
-                    LogDropLogger.logDebug(TAG, "Transactions list appeared")
-                }
-
-                TextButton(
-                    onClick = {
-                        LogDropLogger.logInfo(TAG, "See All transactions tapped")
-                    }
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text(
-                        text = "See All",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = LogDropBlue
-                    )
+                    transactions.forEach { tx ->
+                        val type = tx.optString("type", "EXPENSE")
+                        val isExpense = type == "EXPENSE"
+                        val iconRes = if (isExpense) R.drawable.ic_subs else R.drawable.ic_salary
+                        val amountText = if (isExpense) "-$" + tx.optString("amount") else "+$" + tx.optString("amount")
+                        val amountColor = if (isExpense) Color.Black else Color(0xFF4CAF50)
+
+                        TransactionRow(
+                            iconRes = iconRes,
+                            title = tx.optString("title"),
+                            type = type,
+                            amount = amountText,
+                            amountColor = amountColor
+                        )
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
-
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                TransactionRow(
-                    iconRes = R.drawable.ic_subs,
-                    title = "LogDrop Subscription",
-                    type = "Expense",
-                    amount = "-$19.99",
-                    amountColor = Color.Black
-                )
-
-                TransactionRow(
-                    iconRes = R.drawable.ic_salary,
-                    title = "Salary",
-                    type = "Income",
-                    amount = "+$6,300.00",
-                    amountColor = Color(0xFF4CAF50)
-                )
-
-                TransactionRow(
-                    iconRes = R.drawable.ic_internet,
-                    title = "Internet",
-                    type = "Expense",
-                    amount = "-$29.99",
-                    amountColor = Color.Black
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -435,7 +480,8 @@ fun ExitView(modifier: Modifier = Modifier) {
     ) {
         Button(
             onClick = {
-                LogDropLogger.logInfo("ExitView", "Exit button tapped → navigating to LoginActivity")
+                LogDropLogger.logWarning(TAG, "Exit tapped, logging out")
+                context.getSharedPreferences("logdrop_cache", Context.MODE_PRIVATE).edit().remove("access_token").apply()
 
                 val intent = Intent(context, LoginActivity::class.java)
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

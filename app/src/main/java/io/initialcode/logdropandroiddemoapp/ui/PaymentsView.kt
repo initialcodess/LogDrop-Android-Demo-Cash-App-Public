@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -21,8 +22,11 @@ import androidx.compose.ui.unit.sp
 import io.initialcode.logdropandroiddemoapp.R
 import io.initialcode.logdropandroiddemoapp.ui.theme.LogDropBlue
 import io.initialcode.logdropandroiddemoapp.ui.theme.White
+import io.initialcode.logdropandroiddemoapp.utils.APIClient
 import io.initialcode.logdropandroiddemoapp.utils.LogDropLogger
 import io.logdrop.sdk.LogFlow
+import org.json.JSONObject
+import java.lang.Exception
 import java.util.*
 
 private const val TAG = "PaymentsView"
@@ -31,6 +35,15 @@ private const val TAG = "PaymentsView"
 fun PaymentsView(modifier: Modifier = Modifier) {
     var flowUuid by remember { mutableStateOf("") }
     var showSheet by remember { mutableStateOf(false) }
+    var selectedUser by remember { mutableStateOf<String?>(null) }
+
+    var balance by remember { mutableStateOf("$0.00") }
+    var payableUsers by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var refreshKey by remember { mutableIntStateOf(0) }
+
+    val context = LocalContext.current
+    val apiClient = remember { APIClient.getInstance(context) }
 
     val sendFundsFlow = remember {
         LogFlow(
@@ -40,173 +53,208 @@ fun PaymentsView(modifier: Modifier = Modifier) {
         )
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(White)
-            .verticalScroll(rememberScrollState())
-            .padding(vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextField(
-                value = flowUuid,
-                onValueChange = { flowUuid = it },
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFF5F5F5)),
-                placeholder = { Text("Set Flow UUID", color = Color.Gray) },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color(0xFFF5F5F5),
-                    unfocusedContainerColor = Color(0xFFF5F5F5),
-                    disabledContainerColor = Color(0xFFF5F5F5),
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                singleLine = true
-            )
-            Spacer(Modifier.width(8.dp))
-            Button(
-                onClick = {
-                    /**
-                    DEMO only:
-                    This UI lets us set a global flow id for logs.
-                    In real apps, flows are set by developers in code.
-                    If input is empty, the global flow is cleared (nil).
-                     */
-                    if (flowUuid.trim().isEmpty()) {
-                        LogDropLogger.setGlobalFlow(null)
-                        LogDropLogger.logInfo(TAG, "Global flow cleared")
-                    } else {
-                        val newFlow = LogFlow(
-                            name = flowUuid,
-                            id = UUID.randomUUID().toString(),
-                            customAttributes = null
-                        )
-                        LogDropLogger.setGlobalFlow(newFlow)
-                        LogDropLogger.logInfo(TAG, "Global flow set with id: $flowUuid")
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = LogDropBlue),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Set", color = White)
-            }
-        }
+    LaunchedEffect(refreshKey) {
+        isLoading = true
+        try {
+            val response = apiClient.request("/payment/dashboard", "GET")
+            balance = "$" + response.getString("balance")
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFFF5F7FA))
-                .padding(16.dp)
-        ) {
-            Text("ALL ACCOUNTS", fontSize = 12.sp, color = Color.Gray)
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_creditcard),
-                    contentDescription = "Accounts",
-                    tint = LogDropBlue,
-                    modifier = Modifier.size(28.dp)
-                )
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(
-                        "All Accounts",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = Color.Black
-                    )
-                    Text(
-                        "$7,325.29",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    )
+            val usersArray = response.optJSONArray("payableUsers")
+            if (usersArray != null) {
+                val list = mutableListOf<JSONObject>()
+                for (i in 0 until usersArray.length()) {
+                    list.add(usersArray.getJSONObject(i))
                 }
+                payableUsers = list
             }
+            isLoading = false
+            LogDropLogger.logInfo(TAG, "Payments dashboard loaded successfully")
+        } catch (e: Exception) {
+            isLoading = false
+            LogDropLogger.logError(TAG, "Failed to load payments dashboard: ${e.message}")
         }
+    }
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color.White)
-                .padding(vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+    if (isLoading) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(White),
+            contentAlignment = Alignment.Center
         ) {
-            PaymentActionRow(
-                icon = R.drawable.ic_send,
-                title = "Send Funds",
-                subtitle = "Via transfer or payment link",
-                color = Color(0xFF4CAF50)
-            ) {
-                LogDropLogger.logInfo(TAG, "Send Funds tapped")
-                showSheet = true
-            }
-
-            Divider(color = Color(0xFFE0E0E0))
-            PaymentActionRow(
-                icon = R.drawable.ic_receive,
-                title = "Receive Funds",
-                subtitle = "Request a payment from others",
-                color = LogDropBlue
-            ) {
-                LogDropLogger.logError(TAG, "Receive Funds request failed: No valid account linked")
-            }
+            CircularProgressIndicator(color = LogDropBlue)
         }
-
+    } else {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = modifier
+                .fillMaxSize()
+                .background(White)
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Text(
-                "Pay Fast",
-                modifier = Modifier.padding(horizontal = 16.dp),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
-
             Row(
                 modifier = Modifier
-                    .horizontalScroll(rememberScrollState())
+                    .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(20.dp)
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                val users = listOf("Liam", "Olivia", "Noah", "Emma", "Mason")
-                users.forEach { name ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.clickable {
-                            LogDropLogger.logInfo(TAG, "Pay Fast tapped for user: $name")
-                        }
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(LogDropBlue),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = name.first().toString(),
-                                color = White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
+                TextField(
+                    value = flowUuid,
+                    onValueChange = { flowUuid = it },
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFFF5F5F5)),
+                    placeholder = { Text("Set Flow UUID", color = Color.Gray) },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF5F5F5),
+                        unfocusedContainerColor = Color(0xFFF5F5F5),
+                        disabledContainerColor = Color(0xFFF5F5F5),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
+                    singleLine = true
+                )
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        /**
+                        DEMO only:
+                        This UI lets us set a global flow id for logs.
+                        In real apps, flows are set by developers in code.
+                        If input is empty, the global flow is cleared (nil).
+                         */
+                        if (flowUuid.trim().isEmpty()) {
+                            LogDropLogger.setGlobalFlow(null)
+                            LogDropLogger.logInfo(TAG, "Global flow cleared")
+                        } else {
+                            val newFlow = LogFlow(
+                                name = flowUuid,
+                                id = UUID.randomUUID().toString(),
+                                customAttributes = null
                             )
+                            LogDropLogger.setGlobalFlow(newFlow)
+                            LogDropLogger.logInfo(TAG, "Global flow set with id: $flowUuid")
                         }
-                        Spacer(Modifier.height(4.dp))
-                        Text(name, fontSize = 12.sp, color = Color.Black)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = LogDropBlue),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Set", color = White)
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFF5F7FA))
+                    .padding(16.dp)
+            ) {
+                Text("ALL ACCOUNTS", fontSize = 12.sp, color = Color.Gray)
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_creditcard),
+                        contentDescription = "Accounts",
+                        tint = LogDropBlue,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            "All Accounts",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Color.Black
+                        )
+                        Text(
+                            balance,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    }
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White)
+                    .padding(vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                PaymentActionRow(
+                    icon = R.drawable.ic_send,
+                    title = "Send Funds",
+                    subtitle = "Via transfer or payment link",
+                    color = Color(0xFF4CAF50)
+                ) {
+                    LogDropLogger.logInfo(TAG, "Send Funds tapped")
+                    showSheet = true
+                }
+
+                HorizontalDivider(color = Color(0xFFE0E0E0))
+                PaymentActionRow(
+                    icon = R.drawable.ic_receive,
+                    title = "Receive Funds",
+                    subtitle = "Request a payment from others",
+                    color = LogDropBlue
+                ) {
+                    LogDropLogger.logError(TAG, "Receive Funds request failed: No valid account linked")
+                }
+            }
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    "Pay Fast",
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+
+                Row(
+                    modifier = Modifier
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    payableUsers.forEach { user ->
+                        val usernameVal = user.getString("username")
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.clickable {
+                                LogDropLogger.logInfo(TAG, "Pay Fast tapped for user: $usernameVal")
+                                selectedUser = usernameVal
+                                showSheet = true
+                            }
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .background(LogDropBlue),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = usernameVal.first().toString().uppercase(),
+                                    color = White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp
+                                )
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text(usernameVal, fontSize = 12.sp, color = Color.Black)
+                        }
                     }
                 }
             }
@@ -215,7 +263,16 @@ fun PaymentsView(modifier: Modifier = Modifier) {
 
     if (showSheet) {
         SendFundsSheet(
-            onDismiss = { showSheet = false },
+            initialUsername = selectedUser ?: "",
+            onDismiss = {
+                showSheet = false
+                selectedUser = null
+            },
+            onTransferSuccess = {
+                showSheet = false
+                selectedUser = null
+                refreshKey++
+            },
             sendFundsFlow = sendFundsFlow
         )
     }
